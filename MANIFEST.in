@@ -1,0 +1,18 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include pyproject.toml
+recursive-include langchain_utcp_adapters *.py
+recursive-include tests *.py
+recursive-include examples *.py
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.tmp
+recursive-exclude * *.temp
+exclude .gitignore
+exclude venv/
+exclude .pytest_cache/
+exclude *.egg-info/
+exclude build/
+exclude dist/

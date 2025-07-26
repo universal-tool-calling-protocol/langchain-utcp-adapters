@@ -1,0 +1,135 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+name = "langchain-utcp-adapters"
+version = "0.1.0"
+description = "Make Universal Tool Calling Protocol (UTCP) tools compatible with LangChain and LangGraph agents."
+authors = [
+    { name = "UTCP Adapters Team" },
+]
+license = "MIT"
+repository = "https://www.github.com/universal-tool-calling-protocol/langchain-utcp-adapters"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain-core>=0.3.36,<0.4",
+    "utcp>=0.1.7",
+    "typing-extensions>=4.14.0",
+    "pydantic>=2.0",
+    "aiohttp>=3.8",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=8.0.0",
+    "ruff>=0.9.4",
+    "mypy>=1.8.0",
+    "pytest-socket>=0.7.0",
+    "pytest-asyncio>=0.26.0",
+    "types-setuptools>=69.0.0",
+    "pytest-timeout>=2.4.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+]
+
+dev = [
+    "build",
+    "twine",
+    "pre-commit",
+]
+
+examples = [
+    "langgraph>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "python-dotenv>=1.0.0",
+]
+
+bedrock = [
+    "langchain-aws>=0.1.0",
+    "boto3>=1.26.0",
+]
+
+all = [
+    "langgraph>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "langchain-aws>=0.1.0",
+    "boto3>=1.26.0",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q -v --durations=5"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 88 
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [ "ALL",]
+ignore = [
+  "COM812", # conflict with formatter
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = [
+    "S101", # asserts allowed in tests
+    "ARG", # Unused function args -> fixtures nevertheless are functionally relevant
+    "FBT", # Don't care about booleans as positional arguments in tests
+    "D104",
+    "PLR2004", # Magic value used in comparison
+    "S311", # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "D100", # Missing docstring in public module
+    "D101", # Missing docstring in public class
+    "D102", # Missing docstring in public method
+    "D103", # Missing docstring in public function
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D415", # First line should end with a period, question mark, or exclamation point
+    "EM101", # Exception must not use a string literal, assign to variable first
+    "EM102", # Exception must not use an f-string literal, assign to variable first
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "TRY004", # Prefer `TypeError` exception for invalid type
+    "RET504", # Unnecessary assignment before return statement
+    "SIM117", # Use a single `with` statement instead of nested `with` statements
+    "TC002", # Move third-party imports into a type-checking block
+    "TC003", # Move standard library imports into a type-checking block
+    "ANN001", # Missing type annotation for function argument
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "PT006", # Wrong type passed to first argument of `pytest.mark.parametrize`
+    "PT011", # pytest.raises is too broad, set the `match` parameter
+    "PTH118", # `os.path.join()` should be replaced by `Path` with `/` operator
+    "S110", # try-except-pass detected, consider logging the exception
+    "BLE001", # Do not catch blind exception: `Exception`
+    "SLF001", # Private member accessed
+    "PERF203", # `try-except` within a loop incurs performance overhead
+    "C901", # Function is too complex
+]
+
+"examples/**/*.py" = [
+    "D100", # Missing docstring in public module
+    "D103", # Missing docstring in public function
+    "T201", # print statements allowed in examples
+    "S101", # asserts allowed in examples
+]
