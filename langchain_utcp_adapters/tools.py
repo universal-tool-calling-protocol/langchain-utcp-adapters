@@ -5,7 +5,7 @@ tools, handle tool execution, and manage tool conversion between the two formats
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from langchain_core.tools import BaseTool, StructuredTool, ToolException
 from pydantic import BaseModel, create_model
@@ -52,7 +52,7 @@ def _create_pydantic_model_from_schema(
         return create_model(model_name, value=(Any, ...))
     
     properties = schema.get("properties", {})
-    required = schema.get("required") or []  # Handle None case properly
+    required = schema.get("required") or []
     
     field_definitions = {}
     
@@ -63,7 +63,6 @@ def _create_pydantic_model_from_schema(
     
     if not field_definitions:
         # Empty schema, create a model with no required fields
-        # Use a simple optional field instead of __root__
         field_definitions["_empty"] = (Optional[str], None)
     
     return create_model(model_name, **field_definitions)
@@ -109,9 +108,8 @@ def convert_utcp_tool_to_langchain_tool(
     async def call_tool(**arguments: Dict[str, Any]) -> str:
         """Execute the UTCP tool with given arguments."""
         try:
-            # Format the tool name with provider namespace
-            tool_name = f"{tool.tool_provider.name}.{tool.name}"
-            result = await utcp_client.call_tool(tool_name, arguments)
+            # Use the tool name as-is since UTCP client already namespaces it
+            result = await utcp_client.call_tool(tool.name, arguments)
             return _convert_utcp_result(result)
         except Exception as e:
             raise ToolException(f"Error calling UTCP tool {tool.name}: {str(e)}") from e
@@ -120,30 +118,22 @@ def convert_utcp_tool_to_langchain_tool(
     schema_dict = tool.inputs.model_dump() if hasattr(tool.inputs, 'model_dump') else tool.inputs.__dict__
     args_schema = _create_pydantic_model_from_schema(
         schema_dict,
-        f"{tool.name}Input"
+        f"{tool.name.replace('.', '_')}Input"
     )
 
-    # Use the original provider name from the configuration, not the generated UUID
-    provider_name = getattr(tool.tool_provider, 'name', 'unknown')
+    # Extract provider name from the tool name (format: provider.tool_name)
+    provider_name = tool.tool_provider.name
     
-    # Try to get a cleaner provider name from the tool provider
-    clean_provider_name = provider_name
-    if hasattr(tool.tool_provider, 'url') and 'openlibrary' in str(tool.tool_provider.url):
-        clean_provider_name = 'openlibrary'
-    elif hasattr(tool, 'tags') and 'articles' in tool.tags:
-        clean_provider_name = 'newsapi'
-
     return StructuredTool(
-        name=f"{clean_provider_name}.{tool.name}",
+        name=tool.name,  # Use the full namespaced name from UTCP
         description=tool.description or f"UTCP tool: {tool.name}",
         args_schema=args_schema,
         coroutine=call_tool,
         metadata={
-            "provider": clean_provider_name,
+            "provider": provider_name,
             "provider_type": tool.tool_provider.provider_type,
             "tags": tool.tags,
             "utcp_tool": True,
-            "original_provider_name": provider_name,
         },
     )
 
@@ -201,7 +191,7 @@ async def search_utcp_tools(
     Returns:
         List of relevant LangChain tools
     """
-    # Use UTCP's built-in search functionality (now properly async)
+    # Use UTCP's built-in search functionality
     try:
         search_results = await utcp_client.search_tools(query)
     except Exception as e:

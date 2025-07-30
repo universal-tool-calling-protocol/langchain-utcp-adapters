@@ -4,10 +4,10 @@ A Python package that bridges Universal Tool Calling Protocol (UTCP) providers w
 
 ## Features
 
-- **Multi-Provider Support**: Connect to HTTP (OpenAPI), Text (UTCP Manual), and other provider types
+- **Direct UTCP Integration**: Work directly with UTCP clients for maximum flexibility
 - **Automatic Tool Conversion**: Convert UTCP tools to LangChain-compatible tools with proper schemas
 - **Tool Discovery**: Search and filter tools by name, description, and tags
-- **Health Monitoring**: Real-time provider health checking
+- **Dynamic Provider Registration**: Register providers programmatically at runtime
 - **Async Support**: Full async/await implementation for optimal performance
 - **Type Safety**: Complete type hints and Pydantic v2 compatibility
 
@@ -36,37 +36,260 @@ pip install langchain-utcp-adapters[all]
 
 ```python
 import asyncio
-from langchain_utcp_adapters import MultiProviderUTCPClient
+from utcp.client.utcp_client import UtcpClient
+from utcp.client.utcp_client_config import UtcpClientConfig
+from utcp.shared.provider import HttpProvider
+from langchain_utcp_adapters import load_utcp_tools, search_utcp_tools
 
 async def main():
-    # Configure providers
-    providers = [
-        {
-            "name": "openlibrary",
-            "provider_type": "http",
-            "http_method": "GET",
-            "url": "https://openlibrary.org/static/openapi.json",
-            "content_type": "application/json"
-        }
-    ]
+    # Create UTCP client
+    config = UtcpClientConfig()
+    client = await UtcpClient.create(config=config)
     
-    # Create client
-    client = MultiProviderUTCPClient(providers=providers)
+    # Register providers using Provider objects
+    provider = HttpProvider(
+        name="petstore",
+        provider_type="http",
+        url="https://petstore.swagger.io/v2/swagger.json",
+        http_method="GET"
+    )
+    await client.register_tool_provider(provider)
     
-    # Load tools
-    tools = await client.get_tools()
+    # Load all tools and convert to LangChain format
+    tools = await load_utcp_tools(client)
     print(f"Loaded {len(tools)} tools")
     
     # Search for specific tools
-    book_tools = await client.search_tools("books", max_results=5)
+    pet_tools = await search_utcp_tools(client, "pet", max_results=5)
+    print(f"Found {len(pet_tools)} pet-related tools")
+
+asyncio.run(main())
+```
+
+### Using Configuration Files
+
+```python
+import asyncio
+from utcp.client.utcp_client import UtcpClient
+from utcp.client.utcp_client_config import UtcpClientConfig
+from langchain_utcp_adapters import load_utcp_tools
+
+async def main():
+    # Create client with providers.json configuration
+    config = UtcpClientConfig(providers_file_path="providers.json")
+    client = await UtcpClient.create(config=config)
+    
+    # Load tools from all configured providers
+    tools = await load_utcp_tools(client)
+    
+    # Use tools with LangChain agents...
+
+asyncio.run(main())
+```
+
+**providers.json:**
+```json
+[
+  {
+    "name": "petstore",
+    "provider_type": "http",
+    "url": "https://petstore.swagger.io/v2/swagger.json",
+    "http_method": "GET"
+  }
+]
+```
+
+### LangGraph Integration
+
+```python
+import asyncio
+import os
+from utcp.client.utcp_client import UtcpClient
+from utcp.client.utcp_client_config import UtcpClientConfig
+from utcp.shared.provider import HttpProvider
+from langchain_utcp_adapters import load_utcp_tools
+from langgraph.prebuilt import create_react_agent
+from langchain_openai import ChatOpenAI
+
+async def main():
+    # Set up UTCP client
+    config = UtcpClientConfig()
+    client = await UtcpClient.create(config=config)
+    
+    # Register provider
+    provider = HttpProvider(
+        name="petstore",
+        provider_type="http",
+        url="https://petstore.swagger.io/v2/swagger.json",
+        http_method="GET"
+    )
+    await client.register_tool_provider(provider)
+    
+    # Load tools
+    tools = await load_utcp_tools(client)
+    
+    # Create LangGraph agent
+    llm = ChatOpenAI(model="gpt-4o-mini")
+    agent = create_react_agent(llm, tools)
+    
+    # Use the agent
+    response = await agent.ainvoke({
+        "messages": [("user", "Find information about pets in the store")]
+    })
+    
+    print(response["messages"][-1].content)
+
+# Make sure to set OPENAI_API_KEY environment variable
+asyncio.run(main())
+```
+
+## API Reference
+
+### Core Functions
+
+#### `load_utcp_tools(utcp_client, provider_name=None)`
+
+Load all available UTCP tools and convert them to LangChain tools.
+
+**Parameters:**
+- `utcp_client` (UtcpClient): The UTCP client instance
+- `provider_name` (str, optional): Filter tools by provider name
+
+**Returns:**
+- `List[BaseTool]`: List of LangChain-compatible tools
+
+#### `search_utcp_tools(utcp_client, query, provider_name=None, max_results=None)`
+
+Search for UTCP tools and convert them to LangChain tools.
+
+**Parameters:**
+- `utcp_client` (UtcpClient): The UTCP client instance
+- `query` (str): Search query string
+- `provider_name` (str, optional): Filter tools by provider name
+- `max_results` (int, optional): Maximum number of results
+
+**Returns:**
+- `List[BaseTool]`: List of relevant LangChain tools
+
+#### `convert_utcp_tool_to_langchain_tool(utcp_client, tool)`
+
+Convert a single UTCP tool to a LangChain tool.
+
+**Parameters:**
+- `utcp_client` (UtcpClient): The UTCP client instance
+- `tool` (UTCPTool): The UTCP tool to convert
+
+**Returns:**
+- `BaseTool`: A LangChain-compatible tool
+
+## Authentication
+
+UTCP supports various authentication methods that work seamlessly with the adapters:
+
+```python
+from utcp.shared.provider import HttpProvider
+from utcp.shared.auth import ApiKeyAuth, BasicAuth, OAuth2Auth
+
+# API Key authentication
+provider = HttpProvider(
+    name="authenticated_api",
+    provider_type="http",
+    url="https://api.example.com/openapi.json",
+    http_method="GET",
+    auth=ApiKeyAuth(
+        api_key="${API_KEY}",  # Use environment variable
+        var_name="X-API-Key",
+        location="header"
+    )
+)
+
+# OAuth2 authentication
+provider = HttpProvider(
+    name="oauth_api",
+    provider_type="http",
+    url="https://api.example.com/openapi.json",
+    http_method="GET",
+    auth=OAuth2Auth(
+        token_url="https://api.example.com/oauth/token",
+        client_id="${CLIENT_ID}",
+        client_secret="${CLIENT_SECRET}",
+        scope="read write"
+    )
+)
+```
+
+## Supported Provider Types
+
+The adapters work with all UTCP provider types:
+
+- **HTTP/HTTPS APIs** - Including automatic OpenAPI conversion
+- **Server-Sent Events (SSE)** - For streaming data
+- **Command Line Tools** - Wrap CLI tools as LangChain tools
+- **WebSocket** - Real-time bidirectional communication
+- **gRPC** - High-performance RPC calls
+- **GraphQL** - Query language APIs
+- **Model Context Protocol (MCP)** - For interoperability
+
+## Examples
+
+The `examples/` directory contains comprehensive examples:
+
+- `basic_usage.py` - Basic tool loading and usage
+- `simple_direct_usage.py` - Direct UTCP client usage
+- `simple_langgraph.py` - LangGraph integration
+- `authentication_example.py` - Authentication methods
+- `openapi_integration.py` - OpenAPI specification integration
+- `bedrock_simple.py` - Amazon Bedrock integration
+- `real_providers_example.py` - Real-world provider examples
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters
+cd langchain-utcp-adapters
+
+# Install in development mode
+pip install -e ".[dev,test,examples]"
+
+# Run tests
+pytest
+
+# Run examples
+python examples/basic_usage.py
+```
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Related Projects
+
+- [UTCP Python Client](https://github.com/universal-tool-calling-protocol/python-utcp) - The core UTCP implementation
+- [LangChain](https://github.com/langchain-ai/langchain) - Framework for developing applications with LLMs
+- [LangGraph](https://github.com/langchain-ai/langgraph) - Library for building stateful, multi-actor applications
+        "provider_type": "http",
+        "http_method": "GET",
+        "url": "https://openlibrary.org/static/openapi.json",
+        "content_type": "application/json"
+    })
+    
+    # Load tools and convert to LangChain format
+    tools = await load_utcp_tools(client)
+    print(f"Loaded {len(tools)} tools")
+    
+    # Search for specific tools
+    book_tools = await search_utcp_tools(client, "books", max_results=5)
     
     # Use a tool
     if book_tools:
         tool = book_tools[0]
         result = await tool.ainvoke({"bibkeys": "ISBN:0451526538"})
         print(result)
-    
-    await client.close()
 
 asyncio.run(main())
 ```
@@ -74,14 +297,28 @@ asyncio.run(main())
 ### With LangGraph Agents
 
 ```python
+from utcp.client.utcp_client import UtcpClient
+from utcp.client.utcp_client_config import UtcpClientConfig
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
-from langchain_utcp_adapters import MultiProviderUTCPClient
+from langchain_utcp_adapters import load_utcp_tools
 
 async def create_agent():
+    # Create UTCP client
+    config = UtcpClientConfig()
+    client = await UtcpClient.create(config=config)
+    
+    # Register providers
+    await client.register_tool_provider({
+        "name": "openlibrary",
+        "provider_type": "http",
+        "http_method": "GET",
+        "url": "https://openlibrary.org/static/openapi.json",
+        "content_type": "application/json"
+    })
+    
     # Load UTCP tools
-    client = MultiProviderUTCPClient(providers_file_path="providers.json")
-    tools = await client.get_tools()
+    tools = await load_utcp_tools(client)
     
     # Create agent with UTCP tools
     llm = ChatOpenAI(model="gpt-4")
@@ -102,8 +339,10 @@ print(response["messages"][-1].content)
 ### Amazon Bedrock Integration
 
 ```python
+from utcp.client.utcp_client import UtcpClient
+from utcp.client.utcp_client_config import UtcpClientConfig
 from langchain_aws import ChatBedrock
-from langchain_utcp_adapters import MultiProviderUTCPClient
+from langchain_utcp_adapters import load_utcp_tools
 
 async def bedrock_example():
     # Initialize Bedrock model
@@ -112,9 +351,20 @@ async def bedrock_example():
         region_name="us-east-1"
     )
     
+    # Create UTCP client and register providers
+    config = UtcpClientConfig()
+    client = await UtcpClient.create(config=config)
+    
+    await client.register_tool_provider({
+        "name": "openlibrary",
+        "provider_type": "http",
+        "http_method": "GET",
+        "url": "https://openlibrary.org/static/openapi.json",
+        "content_type": "application/json"
+    })
+    
     # Load UTCP tools
-    client = MultiProviderUTCPClient(providers_file_path="providers.json")
-    tools = await client.get_tools()
+    tools = await load_utcp_tools(client)
     
     # Bind tools to model
     llm_with_tools = llm.bind_tools(tools)
@@ -126,97 +376,87 @@ async def bedrock_example():
 response = asyncio.run(bedrock_example())
 ```
 
-## Provider Configuration
+## API Reference
+
+### Core Functions
+
+```python
+from langchain_utcp_adapters import (
+    load_utcp_tools,
+    search_utcp_tools,
+    convert_utcp_tool_to_langchain_tool
+)
+```
+
+#### `load_utcp_tools(utcp_client, provider_name=None)`
+Load all tools from UTCP client and convert to LangChain format.
+
+**Parameters:**
+- `utcp_client`: UTCP client instance
+- `provider_name`: Optional provider name to filter tools
+
+**Returns:** List of LangChain BaseTool instances
+
+#### `search_utcp_tools(utcp_client, query, provider_name=None, max_results=None)`
+Search for tools and convert to LangChain format.
+
+**Parameters:**
+- `utcp_client`: UTCP client instance  
+- `query`: Search query string
+- `provider_name`: Optional provider name to filter
+- `max_results`: Maximum number of results
+
+**Returns:** List of relevant LangChain BaseTool instances
+
+#### `convert_utcp_tool_to_langchain_tool(utcp_client, tool)`
+Convert a single UTCP tool to LangChain format.
+
+**Parameters:**
+- `utcp_client`: UTCP client instance
+- `tool`: UTCP Tool instance
+
+**Returns:** LangChain BaseTool instance
+
+## Provider Registration
+
+Register providers dynamically using the UTCP client:
 
 ### HTTP Provider (OpenAPI)
 
-```json
-{
-  "name": "openlibrary",
-  "provider_type": "http",
-  "http_method": "GET",
-  "url": "https://openlibrary.org/static/openapi.json",
-  "content_type": "application/json"
-}
-```
-
-### Text Provider (UTCP Manual)
-
-```json
-{
-  "name": "newsapi",
-  "provider_type": "text",
-  "file_path": "./newsapi_manual.json"
-}
-```
-
-### Configuration File
-
-Create a `providers.json` file:
-
-```json
-[
-  {
+```python
+await client.register_tool_provider({
     "name": "openlibrary",
     "provider_type": "http",
     "http_method": "GET",
     "url": "https://openlibrary.org/static/openapi.json",
     "content_type": "application/json"
-  },
-  {
+})
+```
+
+### Text Provider (UTCP Manual)
+
+```python
+await client.register_tool_provider({
     "name": "newsapi",
     "provider_type": "text",
     "file_path": "./newsapi_manual.json"
-  }
-]
+})
 ```
-
-## API Reference
-
-### MultiProviderUTCPClient
-
-The main client class for managing UTCP providers.
-
-```python
-class MultiProviderUTCPClient:
-    def __init__(
-        self,
-        providers: Optional[List[Dict[str, Any]]] = None,
-        providers_file_path: Optional[str] = None
-    )
-    
-    async def get_tools(self, provider_name: Optional[str] = None) -> List[BaseTool]
-    async def search_tools(self, query: str, max_results: int = 10) -> List[BaseTool]
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any
-    async def health_check(self) -> Dict[str, Dict[str, Any]]
-    async def get_providers(self) -> List[str]
-    async def close(self) -> None
-```
-
-### Key Methods
-
-- **`get_tools()`**: Load all tools or tools from a specific provider
-- **`search_tools()`**: Search tools by query string
-- **`call_tool()`**: Execute a tool directly
-- **`health_check()`**: Check provider health status
-- **`get_providers()`**: List available providers
 
 ## Examples
 
 The `examples/` directory contains working examples:
 
-- **`basic_usage.py`**: Simple client usage
-- **`real_providers_example.py`**: Integration with real APIs
-- **`langgraph_integration.py`**: LangGraph agent integration
+- **`simple_direct_usage.py`**: Direct UTCP client usage
+- **`simple_langgraph.py`**: LangGraph agent integration
 - **`bedrock_integration.py`**: Amazon Bedrock integration
-- **`authentication_example.py`**: Authentication patterns
 
 Run examples:
 
 ```bash
 cd examples
-python basic_usage.py
-python real_providers_example.py
+python simple_direct_usage.py
+python simple_langgraph.py
 ```
 
 ## Testing
