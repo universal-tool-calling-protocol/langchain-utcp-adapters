@@ -127,10 +127,10 @@ async def main():
         return
     
     # Test the agent with a simple query
-    print("\n💬 Testing agent with a book search query...")
+    print("\n💬 Testing agent with a Hamlet search query...")
     try:
         response = await agent.ainvoke({
-            "messages": [("user", "Can you search for books about Python programming?")]
+            "messages": [("user", "Can you search for Hamlet by William Shakespeare?")]
         })
         
         print("🎉 Agent response:")

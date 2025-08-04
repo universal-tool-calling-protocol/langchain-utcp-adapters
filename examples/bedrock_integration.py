@@ -151,7 +151,7 @@ async def main():
         # Test queries
         test_queries = [
             "What tools do you have available?",
-            "Can you search for information about books?",
+            "Can you search for Hamlet by William Shakespeare?",
             "Help me understand what you can do with the available tools"
         ]
         
