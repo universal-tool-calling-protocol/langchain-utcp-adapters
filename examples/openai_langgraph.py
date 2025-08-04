@@ -61,10 +61,10 @@ async def main():
     agent = create_react_agent(llm, tools)
     
     # Test the agent
-    print("💬 Testing agent with book search query...")
+    print("💬 Testing agent with Hamlet search query...")
     try:
         response = await agent.ainvoke({
-            "messages": [("user", "Find information about books by George Orwell")]
+            "messages": [("user", "Can you search for Hamlet by William Shakespeare?")]
         })
         
         print("🎉 Agent response:")

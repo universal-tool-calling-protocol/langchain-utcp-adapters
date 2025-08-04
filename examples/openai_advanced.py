@@ -37,6 +37,12 @@ async def main():
         print("Set it with: export OPENAI_API_KEY=your_key_here")
         return
     
+    # Check for OpenAI API key
+    if not os.getenv("OPENAI_API_KEY"):
+        print("❌ OPENAI_API_KEY environment variable not set")
+        print("Set it with: export OPENAI_API_KEY=your_key_here")
+        return
+    
     print("✅ Dependencies and API key verified")
     
     # Create UTCP client
@@ -142,7 +148,7 @@ async def main():
         },
         {
             "name": "Book Search",
-            "query": "Can you help me search for books about Python programming?",
+            "query": "Can you search for Hamlet by William Shakespeare?",
             "description": "Tests integration with OpenLibrary API"
         },
         {
