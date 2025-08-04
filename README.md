@@ -125,9 +125,8 @@ aws configure
 # export AWS_DEFAULT_REGION=us-east-1
 
 # Run examples
-pdm run python examples/bedrock_test.py
-pdm run python examples/bedrock_simple.py
-pdm run python examples/bedrock_integration.py
+pdm run python examples/bedrock_langgraph.py
+pdm run python examples/bedrock_advanced.py
 ```
 
 #### Testing All Examples
@@ -143,7 +142,7 @@ export OPENAI_API_KEY=your_key_here
 pdm run python examples/openai_langgraph.py
 
 # Test Bedrock (requires AWS setup)
-pdm run python examples/bedrock_test.py
+pdm run python examples/bedrock_langgraph.py
 ```
 
 ## Quick Start
@@ -369,9 +368,8 @@ The `examples/` directory contains comprehensive examples:
 - `providers.py` - ✅ Real-world provider examples (11 OpenLibrary tools)
 - `openai_langgraph.py` - 🔑 LangGraph integration (requires OPENAI_API_KEY)
 - `openai_advanced.py` - 🔑 Advanced LangGraph integration (requires OPENAI_API_KEY)
-- `bedrock_simple.py` - 🔐 Simple Amazon Bedrock integration (requires AWS credentials)
-- `bedrock_integration.py` - 🔐 Comprehensive Amazon Bedrock integration (requires AWS credentials)
-- `bedrock_test.py` - 🔐 Bedrock integration testing (requires AWS credentials)
+- `bedrock_langgraph.py` - 🔐 Simple Amazon Bedrock integration (requires AWS credentials)
+- `bedrock_advanced.py` - 🔐 Comprehensive Amazon Bedrock integration (requires AWS credentials)
 
 **Legend:**
 - ✅ Works immediately without external dependencies
@@ -417,7 +415,7 @@ export OPENAI_API_KEY=your_key_here
 python examples/openai_langgraph.py
 
 # Bedrock examples (requires AWS credentials)
-python examples/bedrock_test.py
+python examples/bedrock_langgraph.py
 ```
 
 ### Code Quality
@@ -663,8 +661,7 @@ The `examples/` directory contains working examples:
 
 - **`direct_usage.py`**: Direct UTCP client usage
 - **`openai_langgraph.py`**: LangGraph agent integration
-- **`bedrock_integration.py`**: Comprehensive Amazon Bedrock integration
-- **`bedrock_test.py`**: Bedrock integration testing
+- **`bedrock_advanced.py`**: Comprehensive Amazon Bedrock integration
 - **`basic_usage.py`**: Basic tool loading and usage
 
 Run examples:
@@ -673,7 +670,7 @@ Run examples:
 cd examples
 python direct_usage.py
 python openai_langgraph.py
-python bedrock_test.py
+python bedrock_langgraph.py
 ```
 
 ## Testing
