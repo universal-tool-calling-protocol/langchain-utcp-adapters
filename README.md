@@ -108,8 +108,8 @@ pdm install -G examples  # or pip install langchain-utcp-adapters[examples]
 
 # Set API key and run
 export OPENAI_API_KEY=your_key_here
-pdm run python examples/simple_langgraph.py
-pdm run python examples/langgraph_integration.py
+pdm run python examples/simple_openai_langgraph.py
+pdm run python examples/openai_langgraph_integration.py
 ```
 
 #### Bedrock Examples (Requires AWS Credentials)
@@ -140,7 +140,7 @@ done
 
 # Test examples with dependencies (requires setup)
 export OPENAI_API_KEY=your_key_here
-pdm run python examples/simple_langgraph.py
+pdm run python examples/simple_openai_langgraph.py
 
 # Test Bedrock (requires AWS setup)
 pdm run python examples/bedrock_test.py
@@ -367,8 +367,8 @@ The `examples/` directory contains comprehensive examples:
 - `authentication_example.py` - ✅ Authentication methods demonstration (fixed)
 - `openapi_integration.py` - ✅ OpenAPI specification integration (20 Petstore tools)
 - `real_providers_example.py` - ✅ Real-world provider examples (11 OpenLibrary tools)
-- `simple_langgraph.py` - 🔑 LangGraph integration (requires OPENAI_API_KEY)
-- `langgraph_integration.py` - 🔑 Advanced LangGraph integration (requires OPENAI_API_KEY)
+- `simple_openai_langgraph.py` - 🔑 LangGraph integration (requires OPENAI_API_KEY)
+- `openai_langgraph_integration.py` - 🔑 Advanced LangGraph integration (requires OPENAI_API_KEY)
 - `bedrock_simple.py` - 🔐 Simple Amazon Bedrock integration (requires AWS credentials)
 - `bedrock_integration.py` - 🔐 Comprehensive Amazon Bedrock integration (requires AWS credentials)
 - `bedrock_test.py` - 🔐 Bedrock integration testing (requires AWS credentials)
@@ -414,7 +414,7 @@ python examples/basic_usage.py
 
 # Examples requiring API keys
 export OPENAI_API_KEY=your_key_here
-python examples/simple_langgraph.py
+python examples/simple_openai_langgraph.py
 
 # Bedrock examples (requires AWS credentials)
 python examples/bedrock_test.py
@@ -662,7 +662,7 @@ await client.register_tool_provider({
 The `examples/` directory contains working examples:
 
 - **`simple_direct_usage.py`**: Direct UTCP client usage
-- **`simple_langgraph.py`**: LangGraph agent integration
+- **`simple_openai_langgraph.py`**: LangGraph agent integration
 - **`bedrock_integration.py`**: Comprehensive Amazon Bedrock integration
 - **`bedrock_test.py`**: Bedrock integration testing
 - **`basic_usage.py`**: Basic tool loading and usage
@@ -672,7 +672,7 @@ Run examples:
 ```bash
 cd examples
 python simple_direct_usage.py
-python simple_langgraph.py
+python simple_openai_langgraph.py
 python bedrock_test.py
 ```
 
