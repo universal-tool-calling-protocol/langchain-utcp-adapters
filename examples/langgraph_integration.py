@@ -1,17 +1,15 @@
-"""LangGraph integration example for LangChain UTCP Adapters.
+"""Advanced LangGraph integration example for LangChain UTCP Adapters.
 
-This example demonstrates how to use UTCP tools with LangGraph agents.
+This example demonstrates advanced patterns for using UTCP tools with LangGraph agents,
+including multiple providers, error handling, and tool search functionality.
 """
 
 import asyncio
-import json
 import os
-from pathlib import Path
-
 from utcp.client.utcp_client import UtcpClient
 from utcp.client.utcp_client_config import UtcpClientConfig
 from utcp.shared.provider import HttpProvider
-from langchain_utcp_adapters import load_utcp_tools
+from langchain_utcp_adapters import load_utcp_tools, search_utcp_tools
 
 # Optional: Only import if available
 try:
@@ -23,77 +21,14 @@ except ImportError:
     print("LangGraph or OpenAI not available. Install with: pip install langgraph langchain-openai")
 
 
-async def create_sample_utcp_server():
-    """Create a simple UTCP server for demonstration."""
-    try:
-        from fastapi import FastAPI
-        from utcp.shared.tool import Tool, ToolInputOutputSchema
-        from utcp.shared.provider import HttpProvider
-        import uvicorn
-        import threading
-        import time
-        
-        app = FastAPI()
-        
-        # Define a simple tool
-        calculator_tool = Tool(
-            name="add_numbers",
-            description="Add two numbers together",
-            inputs=ToolInputOutputSchema(
-                type="object",
-                properties={
-                    "a": {"type": "number", "description": "First number"},
-                    "b": {"type": "number", "description": "Second number"}
-                },
-                required=["a", "b"]
-            ),
-            outputs=ToolInputOutputSchema(
-                type="object",
-                properties={
-                    "result": {"type": "number", "description": "Sum of the two numbers"}
-                }
-            ),
-            tool_provider=HttpProvider(
-                name="calculator",
-                url="http://localhost:8000/add",
-                http_method="POST"
-            )
-        )
-        
-        @app.get("/utcp")
-        def get_utcp_manual():
-            """Return UTCP manual with available tools."""
-            return {
-                "version": "1.0",
-                "tools": [calculator_tool.model_dump()]
-            }
-        
-        @app.post("/add")
-        def add_numbers(a: float, b: float):
-            """Add two numbers."""
-            return {"result": a + b}
-        
-        # Start server in background thread
-        def run_server():
-            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="error")
-        
-        server_thread = threading.Thread(target=run_server, daemon=True)
-        server_thread.start()
-        time.sleep(2)  # Give server time to start
-        
-        return "http://localhost:8000/utcp"
-        
-    except ImportError:
-        print("FastAPI not available for demo server. Using httpbin instead.")
-        return None
-
-
 async def main():
-    """Main example function."""
-    print("🤖 LangGraph + UTCP Integration Example")
-    print("=" * 40)
+    """Advanced LangGraph integration example."""
+    print("🤖 Advanced LangGraph + UTCP Integration")
+    print("=" * 45)
     
     if not LANGGRAPH_AVAILABLE:
+        print("❌ Required dependencies not available.")
+        print("Install with: pdm install -G examples")
         return
     
     # Check for OpenAI API key
@@ -102,71 +37,171 @@ async def main():
         print("Set it with: export OPENAI_API_KEY=your_key_here")
         return
     
+    print("✅ Dependencies and API key verified")
+    
     # Create UTCP client
-    print("📡 Setting up UTCP client...")
+    print("\n📡 Setting up UTCP client...")
     config = UtcpClientConfig()
     client = await UtcpClient.create(config=config)
     
-    # Try to create a demo server, fallback to httpbin
-    demo_server_url = await create_sample_utcp_server()
+    # Register multiple providers for comprehensive testing
+    print("📡 Registering multiple providers...")
     
-    if demo_server_url:
-        # Register the demo server
-        demo_provider = HttpProvider(
-            name="calculator_demo",
-            provider_type="http",
-            url=demo_server_url,
-            http_method="GET"
-        )
-        await client.register_tool_provider(demo_provider)
-    else:
-        # Fallback: Register httpbin for testing
-        httpbin_provider = HttpProvider(
-            name="httpbin_test",
-            provider_type="http",
-            url="http://httpbin.org/anything",
-            http_method="POST"
-        )
-        await client.register_tool_provider(httpbin_provider)
+    providers = [
+        {
+            "name": "openlibrary",
+            "provider": HttpProvider(
+                name="openlibrary",
+                provider_type="http",
+                http_method="GET",
+                url="https://openlibrary.org/static/openapi.json",
+                content_type="application/json"
+            ),
+            "description": "OpenLibrary API for book information"
+        },
+        {
+            "name": "petstore",
+            "provider": HttpProvider(
+                name="petstore",
+                provider_type="http",
+                url="https://petstore.swagger.io/v2/swagger.json",
+                http_method="GET"
+            ),
+            "description": "Swagger Petstore API for demo purposes"
+        }
+    ]
     
-    # Load tools and convert to LangChain format
-    print("🔧 Loading UTCP tools...")
+    registered_providers = []
+    for provider_info in providers:
+        try:
+            print(f"  Registering {provider_info['name']}...")
+            await client.register_tool_provider(provider_info["provider"])
+            registered_providers.append(provider_info["name"])
+            print(f"    ✅ {provider_info['description']}")
+        except Exception as e:
+            print(f"    ❌ Failed to register {provider_info['name']}: {e}")
+    
+    if not registered_providers:
+        print("❌ No providers registered successfully. Cannot continue.")
+        return
+    
+    print(f"✅ Successfully registered {len(registered_providers)} providers")
+    
+    # Load all tools and convert to LangChain format
+    print("\n🔧 Loading UTCP tools...")
     tools = await load_utcp_tools(client)
-    print(f"Loaded {len(tools)} tools for the agent:")
+    print(f"Loaded {len(tools)} tools from all providers:")
     
+    # Group tools by provider for better organization
+    tools_by_provider = {}
     for tool in tools:
-        print(f"  - {tool.name}: {tool.description}")
+        provider = tool.metadata.get('provider', 'unknown')
+        if provider not in tools_by_provider:
+            tools_by_provider[provider] = []
+        tools_by_provider[provider].append(tool)
+    
+    for provider, provider_tools in tools_by_provider.items():
+        print(f"  📦 {provider}: {len(provider_tools)} tools")
+        for tool in provider_tools[:2]:  # Show first 2 tools per provider
+            print(f"    - {tool.name}")
+        if len(provider_tools) > 2:
+            print(f"    ... and {len(provider_tools) - 2} more")
     
     if not tools:
         print("❌ No tools available. Cannot create agent.")
         return
     
+    # Demonstrate tool search functionality
+    print("\n🔍 Demonstrating tool search...")
+    search_queries = ["book", "pet", "search", "get"]
+    
+    for query in search_queries:
+        results = await search_utcp_tools(client, query, max_results=3)
+        if results:
+            print(f"  Query '{query}': {len(results)} tools found")
+            for tool in results[:2]:
+                provider = tool.metadata.get('provider', 'unknown')
+                print(f"    - {tool.name} ({provider})")
+    
     # Create LangGraph agent with UTCP tools
-    print("🤖 Creating LangGraph agent...")
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    agent = create_react_agent(llm, tools)
-    
-    # Test the agent
-    print("💬 Testing agent...")
+    print("\n🤖 Creating advanced LangGraph agent...")
     try:
-        if demo_server_url:
-            # Test with calculator if available
-            response = await agent.ainvoke({
-                "messages": [("user", "Add 15 and 27 together")]
-            })
-        else:
-            # Test with httpbin
-            response = await agent.ainvoke({
-                "messages": [("user", "Make a test HTTP request with some data")]
-            })
-        
-        print("🎉 Agent response:")
-        print(response["messages"][-1].content)
-        
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
+        agent = create_react_agent(llm, tools)
+        print("✅ Agent created successfully with all available tools")
     except Exception as e:
-        print(f"❌ Agent execution failed: {e}")
+        print(f"❌ Failed to create agent: {e}")
+        return
     
-    print("\n✅ Example completed!")
+    # Test the agent with multiple scenarios
+    test_scenarios = [
+        {
+            "name": "Tool Discovery",
+            "query": "What tools do you have available? List them by category.",
+            "description": "Tests agent's ability to understand its capabilities"
+        },
+        {
+            "name": "Book Search",
+            "query": "Can you help me search for books about Python programming?",
+            "description": "Tests integration with OpenLibrary API"
+        },
+        {
+            "name": "API Exploration", 
+            "query": "What kind of information can you get about pets or animals?",
+            "description": "Tests integration with Petstore API"
+        }
+    ]
+    
+    print("\n💬 Testing agent with multiple scenarios...")
+    
+    for i, scenario in enumerate(test_scenarios, 1):
+        print(f"\n{'='*50}")
+        print(f"Test {i}: {scenario['name']}")
+        print(f"{'='*50}")
+        print(f"Query: {scenario['query']}")
+        print(f"Purpose: {scenario['description']}")
+        print()
+        
+        try:
+            response = await agent.ainvoke({
+                "messages": [("user", scenario["query"])]
+            })
+            
+            print("🤖 Agent Response:")
+            print(response["messages"][-1].content)
+            
+            # Check if tools were used
+            tool_calls = []
+            for message in response["messages"]:
+                if hasattr(message, 'tool_calls') and message.tool_calls:
+                    tool_calls.extend(message.tool_calls)
+            
+            if tool_calls:
+                print(f"\n🔧 Tools Used:")
+                for tool_call in tool_calls:
+                    print(f"  - {tool_call['name']}")
+                    if 'args' in tool_call:
+                        print(f"    Args: {tool_call['args']}")
+            else:
+                print("\n💭 No tools were called for this query")
+                
+        except Exception as e:
+            print(f"❌ Test failed: {e}")
+    
+    # Performance and statistics
+    print(f"\n📊 Session Statistics:")
+    print(f"  Total providers registered: {len(registered_providers)}")
+    print(f"  Total tools available: {len(tools)}")
+    print(f"  Tool categories: {len(tools_by_provider)}")
+    print(f"  Average tools per provider: {len(tools) / len(tools_by_provider):.1f}")
+    
+    print("\n✅ Advanced LangGraph integration example completed!")
+    print("\n💡 Key Features Demonstrated:")
+    print("  • Multiple UTCP provider integration")
+    print("  • Tool search and discovery")
+    print("  • Advanced agent testing scenarios")
+    print("  • Error handling and graceful degradation")
+    print("  • Tool usage tracking and statistics")
 
 
 if __name__ == "__main__":

@@ -77,34 +77,73 @@ pip install -e ".[all]"
 ### For Running Tests
 
 ```bash
-# With PDM
+# With PDM (recommended for development)
 pdm install -G test
 pdm run pytest
 
 # With pip  
 pip install -e ".[test]"
 pytest
+
+# Run with coverage
+pytest tests/ --cov=langchain_utcp_adapters
 ```
 
 ### For Running Examples
 
+#### Basic Examples (No External Dependencies)
 ```bash
-# Basic examples (no external APIs)
+# Core functionality - works immediately
 python examples/basic_usage.py
 python examples/simple_direct_usage.py
+python examples/authentication_example.py
+python examples/openapi_integration.py
+python examples/real_providers_example.py
+```
 
-# LangGraph examples (requires OpenAI API key)
+#### LangGraph Examples (Requires OpenAI API Key)
+```bash
+# Install dependencies
 pdm install -G examples  # or pip install langchain-utcp-adapters[examples]
+
+# Set API key and run
 export OPENAI_API_KEY=your_key_here
-python examples/simple_langgraph.py
+pdm run python examples/simple_langgraph.py
+pdm run python examples/langgraph_integration.py
+```
 
-# Bedrock examples (requires AWS credentials)
+#### Bedrock Examples (Requires AWS Credentials)
+```bash
+# Install dependencies
 pdm install -G bedrock   # or pip install langchain-utcp-adapters[bedrock]
-python examples/bedrock_test.py
 
-# Server examples (creates local test servers)
-pdm install -G server    # or pip install langchain-utcp-adapters[all]
-python examples/langgraph_integration.py
+# Configure AWS credentials
+aws configure
+# OR set environment variables:
+# export AWS_ACCESS_KEY_ID=your_key
+# export AWS_SECRET_ACCESS_KEY=your_secret
+# export AWS_DEFAULT_REGION=us-east-1
+
+# Run examples
+pdm run python examples/bedrock_test.py
+pdm run python examples/bedrock_simple.py
+pdm run python examples/bedrock_integration.py
+```
+
+#### Testing All Examples
+```bash
+# Test basic examples (should all work)
+for example in basic_usage simple_direct_usage authentication_example openapi_integration real_providers_example; do
+    echo "Testing $example..."
+    python examples/$example.py
+done
+
+# Test examples with dependencies (requires setup)
+export OPENAI_API_KEY=your_key_here
+pdm run python examples/simple_langgraph.py
+
+# Test Bedrock (requires AWS setup)
+pdm run python examples/bedrock_test.py
 ```
 
 ## Quick Start
@@ -220,44 +259,56 @@ async def main():
 asyncio.run(main())
 ```
 
-## API Reference
+### Amazon Bedrock Integration
 
-### Core Functions
+```python
+import asyncio
+import os
+from utcp.client.utcp_client import UtcpClient
+from utcp.client.utcp_client_config import UtcpClientConfig
+from utcp.shared.provider import HttpProvider
+from langchain_utcp_adapters import load_utcp_tools, create_bedrock_tool_mapping
+from langgraph.prebuilt import create_react_agent
+from langchain_aws import ChatBedrock
 
-#### `load_utcp_tools(utcp_client, provider_name=None)`
+async def main():
+    # Set up UTCP client
+    config = UtcpClientConfig()
+    client = await UtcpClient.create(config=config)
+    
+    # Register provider
+    provider = HttpProvider(
+        name="openlibrary",
+        provider_type="http",
+        http_method="GET",
+        url="https://openlibrary.org/static/openapi.json",
+        content_type="application/json"
+    )
+    await client.register_tool_provider(provider)
+    
+    # Load tools and create Bedrock-compatible versions
+    original_tools = await load_utcp_tools(client)
+    bedrock_tools, name_mapping = create_bedrock_tool_mapping(original_tools)
+    
+    # Create Bedrock LLM
+    llm = ChatBedrock(
+        model_id="anthropic.claude-3-haiku-20240307-v1:0",
+        region_name="us-east-1"
+    )
+    
+    # Create LangGraph agent
+    agent = create_react_agent(llm, bedrock_tools)
+    
+    # Use the agent
+    response = await agent.ainvoke({
+        "messages": [("user", "Search for books about Python programming")]
+    })
+    
+    print(response["messages"][-1].content)
 
-Load all available UTCP tools and convert them to LangChain tools.
-
-**Parameters:**
-- `utcp_client` (UtcpClient): The UTCP client instance
-- `provider_name` (str, optional): Filter tools by provider name
-
-**Returns:**
-- `List[BaseTool]`: List of LangChain-compatible tools
-
-#### `search_utcp_tools(utcp_client, query, provider_name=None, max_results=None)`
-
-Search for UTCP tools and convert them to LangChain tools.
-
-**Parameters:**
-- `utcp_client` (UtcpClient): The UTCP client instance
-- `query` (str): Search query string
-- `provider_name` (str, optional): Filter tools by provider name
-- `max_results` (int, optional): Maximum number of results
-
-**Returns:**
-- `List[BaseTool]`: List of relevant LangChain tools
-
-#### `convert_utcp_tool_to_langchain_tool(utcp_client, tool)`
-
-Convert a single UTCP tool to a LangChain tool.
-
-**Parameters:**
-- `utcp_client` (UtcpClient): The UTCP client instance
-- `tool` (UTCPTool): The UTCP tool to convert
-
-**Returns:**
-- `BaseTool`: A LangChain-compatible tool
+# Make sure AWS credentials are configured
+asyncio.run(main())
+```
 
 ## Authentication
 
@@ -311,16 +362,21 @@ The adapters work with all UTCP provider types:
 
 The `examples/` directory contains comprehensive examples:
 
-- `basic_usage.py` - Basic tool loading and usage
-- `simple_direct_usage.py` - Direct UTCP client usage
-- `simple_langgraph.py` - LangGraph integration
-- `langgraph_integration.py` - Advanced LangGraph integration
-- `authentication_example.py` - Authentication methods
-- `openapi_integration.py` - OpenAPI specification integration
-- `bedrock_simple.py` - Simple Amazon Bedrock integration
-- `bedrock_integration.py` - Comprehensive Amazon Bedrock integration
-- `bedrock_test.py` - Bedrock integration testing
-- `real_providers_example.py` - Real-world provider examples
+- `basic_usage.py` - ✅ Basic tool loading and usage (31 tools from Petstore + OpenLibrary)
+- `simple_direct_usage.py` - ✅ Direct UTCP client usage (11 OpenLibrary tools)
+- `authentication_example.py` - ✅ Authentication methods demonstration (fixed)
+- `openapi_integration.py` - ✅ OpenAPI specification integration (20 Petstore tools)
+- `real_providers_example.py` - ✅ Real-world provider examples (11 OpenLibrary tools)
+- `simple_langgraph.py` - 🔑 LangGraph integration (requires OPENAI_API_KEY)
+- `langgraph_integration.py` - 🔑 Advanced LangGraph integration (requires OPENAI_API_KEY)
+- `bedrock_simple.py` - 🔐 Simple Amazon Bedrock integration (requires AWS credentials)
+- `bedrock_integration.py` - 🔐 Comprehensive Amazon Bedrock integration (requires AWS credentials)
+- `bedrock_test.py` - 🔐 Bedrock integration testing (requires AWS credentials)
+
+**Legend:**
+- ✅ Works immediately without external dependencies
+- 🔑 Requires API keys (OpenAI)
+- 🔐 Requires AWS credentials and Bedrock access
 
 ## Development
 

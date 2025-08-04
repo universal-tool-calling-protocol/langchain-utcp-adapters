@@ -6,8 +6,9 @@ strict tool naming requirements.
 """
 
 import uuid
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any, Optional
 from langchain_core.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
 
 
 def format_tool_name_for_bedrock(tool_name: str) -> str:
@@ -68,14 +69,16 @@ def create_bedrock_tool_mapping(tools: List[BaseTool]) -> Tuple[List[BaseTool], 
         # Store the mapping
         name_mapping[bedrock_name] = original_name
         
-        # Create a new tool with the Bedrock-compatible name
-        # We'll create a wrapper that preserves all functionality
-        bedrock_tool = BedrockCompatibleTool(
-            original_tool=tool,
-            bedrock_name=bedrock_name
-        )
-        
-        bedrock_tools.append(bedrock_tool)
+        if bedrock_name == original_name:
+            # Name is already compatible, use original tool
+            bedrock_tools.append(tool)
+        else:
+            # Create a wrapper tool with the Bedrock-compatible name
+            bedrock_tool = BedrockCompatibleTool(
+                original_tool=tool,
+                bedrock_name=bedrock_name
+            )
+            bedrock_tools.append(bedrock_tool)
     
     return bedrock_tools, name_mapping
 
@@ -94,40 +97,48 @@ class BedrockCompatibleTool(BaseTool):
             original_tool: The original LangChain tool
             bedrock_name: The Bedrock-compatible name
         """
-        # Store original tool as a private attribute to avoid Pydantic validation
-        object.__setattr__(self, '_original_tool', original_tool)
-        object.__setattr__(self, '_bedrock_name', bedrock_name)
+        # Create metadata that includes the original name
+        metadata = dict(original_tool.metadata) if original_tool.metadata else {}
+        metadata['original_name'] = original_tool.name
         
         # Initialize the parent class with Bedrock-compatible name
         super().__init__(
             name=bedrock_name,
             description=original_tool.description,
             args_schema=original_tool.args_schema,
-            return_direct=original_tool.return_direct,
-            verbose=original_tool.verbose,
-            callbacks=original_tool.callbacks,
-            callback_manager=original_tool.callback_manager,
-            tags=original_tool.tags,
-            metadata=original_tool.metadata,
+            return_direct=getattr(original_tool, 'return_direct', False),
+            verbose=getattr(original_tool, 'verbose', False),
+            callbacks=getattr(original_tool, 'callbacks', None),
+            callback_manager=getattr(original_tool, 'callback_manager', None),
+            tags=getattr(original_tool, 'tags', None),
+            metadata=metadata,
         )
+        
+        # Store the original tool using object.__setattr__ to bypass Pydantic validation
+        object.__setattr__(self, '_original_tool', original_tool)
     
-    def _run(self, *args, **kwargs):
-        """Run the original tool synchronously."""
+    def _run(self, *args, **kwargs) -> Any:
+        """Run the original tool synchronously (required abstract method)."""
+        # This method is required by BaseTool but we prefer to use invoke
         return self._original_tool._run(*args, **kwargs)
     
-    async def _arun(self, *args, **kwargs):
-        """Run the original tool asynchronously."""
+    async def _arun(self, *args, **kwargs) -> Any:
+        """Run the original tool asynchronously (required abstract method)."""
+        # This method is required by BaseTool but we prefer to use ainvoke
         return await self._original_tool._arun(*args, **kwargs)
+    
+    def invoke(self, input: Dict[str, Any], config: Optional[RunnableConfig] = None, **kwargs) -> Any:
+        """Invoke the original tool synchronously."""
+        return self._original_tool.invoke(input, config, **kwargs)
+    
+    async def ainvoke(self, input: Dict[str, Any], config: Optional[RunnableConfig] = None, **kwargs) -> Any:
+        """Invoke the original tool asynchronously."""
+        return await self._original_tool.ainvoke(input, config, **kwargs)
     
     @property
     def original_name(self) -> str:
         """Get the original tool name."""
         return self._original_tool.name
-    
-    @property
-    def bedrock_name(self) -> str:
-        """Get the Bedrock-compatible name."""
-        return self._bedrock_name
     
     @property
     def original_tool(self) -> BaseTool:

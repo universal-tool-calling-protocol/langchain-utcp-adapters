@@ -20,9 +20,11 @@ from langchain_utcp_adapters.bedrock_utils import (
 __version__ = "0.1.0"
 
 __all__ = [
+    # Core tool conversion functions
     "convert_utcp_tool_to_langchain_tool", 
     "load_utcp_tools",
     "search_utcp_tools",
+    # Bedrock compatibility utilities
     "format_tool_name_for_bedrock",
     "create_bedrock_tool_mapping",
     "BedrockCompatibleTool",
