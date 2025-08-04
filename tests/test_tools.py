@@ -104,7 +104,7 @@ class TestToolConversion:
         langchain_tool = convert_utcp_tool_to_langchain_tool(mock_client, utcp_tool)
         
         # Test tool properties
-        assert langchain_tool.name == "test_provider.test_tool"
+        assert langchain_tool.name == "test_tool"  # UTCP provides the name as-is
         assert langchain_tool.description == "A test tool"
         assert langchain_tool.metadata["provider"] == "test_provider"
         assert langchain_tool.metadata["provider_type"] == "http"
@@ -114,7 +114,7 @@ class TestToolConversion:
         result = await langchain_tool.ainvoke({"input_text": "hello"})
         assert "success" in result
         mock_client.call_tool.assert_called_once_with(
-            "test_provider.test_tool", 
+            "test_tool",  # UTCP uses the tool name as-is
             {"input_text": "hello"}
         )
 
@@ -144,7 +144,7 @@ class TestToolConversion:
         
         # Verify results
         assert len(langchain_tools) == 1
-        assert langchain_tools[0].name == "test_provider.test_tool"
+        assert langchain_tools[0].name == "test_tool"  # UTCP provides the name as-is
         assert langchain_tools[0].metadata["utcp_tool"] is True
 
     @pytest.mark.asyncio
@@ -183,7 +183,7 @@ class TestToolConversion:
         
         # Verify only provider1 tools are returned
         assert len(langchain_tools) == 1
-        assert langchain_tools[0].name == "provider1.tool1"
+        assert langchain_tools[0].name == "tool1"  # UTCP provides the name as-is
 
     @pytest.mark.asyncio
     async def test_search_utcp_tools(self):
@@ -207,5 +207,5 @@ class TestToolConversion:
         
         # Verify results
         assert len(langchain_tools) == 1
-        assert langchain_tools[0].name == "test_provider.search_tool"
+        assert langchain_tools[0].name == "search_tool"  # UTCP provides the name as-is
         mock_client.search_tools.assert_called_once_with("search query")
