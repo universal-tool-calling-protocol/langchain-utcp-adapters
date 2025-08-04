@@ -237,9 +237,12 @@ The `examples/` directory contains comprehensive examples:
 - `basic_usage.py` - Basic tool loading and usage
 - `simple_direct_usage.py` - Direct UTCP client usage
 - `simple_langgraph.py` - LangGraph integration
+- `langgraph_integration.py` - Advanced LangGraph integration
 - `authentication_example.py` - Authentication methods
 - `openapi_integration.py` - OpenAPI specification integration
-- `bedrock_simple.py` - Amazon Bedrock integration
+- `bedrock_simple.py` - Simple Amazon Bedrock integration
+- `bedrock_integration.py` - Comprehensive Amazon Bedrock integration
+- `bedrock_test.py` - Bedrock integration testing
 - `real_providers_example.py` - Real-world provider examples
 
 ## Development
@@ -342,7 +345,7 @@ print(response["messages"][-1].content)
 from utcp.client.utcp_client import UtcpClient
 from utcp.client.utcp_client_config import UtcpClientConfig
 from langchain_aws import ChatBedrock
-from langchain_utcp_adapters import load_utcp_tools
+from langchain_utcp_adapters import load_utcp_tools, create_bedrock_tool_mapping
 
 async def bedrock_example():
     # Initialize Bedrock model
@@ -364,10 +367,13 @@ async def bedrock_example():
     })
     
     # Load UTCP tools
-    tools = await load_utcp_tools(client)
+    original_tools = await load_utcp_tools(client)
+    
+    # Create Bedrock-compatible tools with name mapping
+    bedrock_tools, name_mapping = create_bedrock_tool_mapping(original_tools)
     
     # Bind tools to model
-    llm_with_tools = llm.bind_tools(tools)
+    llm_with_tools = llm.bind_tools(bedrock_tools)
     
     # Use with tool calling
     response = await llm_with_tools.ainvoke("Search for Python programming books")
@@ -384,7 +390,12 @@ response = asyncio.run(bedrock_example())
 from langchain_utcp_adapters import (
     load_utcp_tools,
     search_utcp_tools,
-    convert_utcp_tool_to_langchain_tool
+    convert_utcp_tool_to_langchain_tool,
+    # Bedrock-specific utilities
+    create_bedrock_tool_mapping,
+    format_tool_name_for_bedrock,
+    BedrockCompatibleTool,
+    restore_original_tool_names
 )
 ```
 
@@ -416,6 +427,38 @@ Convert a single UTCP tool to LangChain format.
 - `tool`: UTCP Tool instance
 
 **Returns:** LangChain BaseTool instance
+
+### Bedrock Utilities
+
+#### `create_bedrock_tool_mapping(tools)`
+Create Bedrock-compatible tools with name mapping for tools that don't meet Bedrock's naming requirements.
+
+**Parameters:**
+- `tools`: List of LangChain BaseTool instances
+
+**Returns:** Tuple containing:
+- List of Bedrock-compatible tools
+- Dictionary mapping Bedrock names to original names
+
+#### `format_tool_name_for_bedrock(tool_name)`
+Format a tool name to meet Bedrock's requirements (64 chars max, alphanumeric + underscore/hyphen only).
+
+**Parameters:**
+- `tool_name`: Original tool name string
+
+**Returns:** Bedrock-compatible tool name string
+
+#### `BedrockCompatibleTool`
+A wrapper tool class that provides Bedrock-compatible naming while preserving all original tool functionality.
+
+#### `restore_original_tool_names(tool_calls, name_mapping)`
+Restore original tool names in tool calls from Bedrock responses.
+
+**Parameters:**
+- `tool_calls`: List of tool calls with Bedrock names
+- `name_mapping`: Mapping from Bedrock names to original names
+
+**Returns:** List of tool calls with original names restored
 
 ## Provider Registration
 
@@ -449,7 +492,9 @@ The `examples/` directory contains working examples:
 
 - **`simple_direct_usage.py`**: Direct UTCP client usage
 - **`simple_langgraph.py`**: LangGraph agent integration
-- **`bedrock_integration.py`**: Amazon Bedrock integration
+- **`bedrock_integration.py`**: Comprehensive Amazon Bedrock integration
+- **`bedrock_test.py`**: Bedrock integration testing
+- **`basic_usage.py`**: Basic tool loading and usage
 
 Run examples:
 
@@ -457,6 +502,7 @@ Run examples:
 cd examples
 python simple_direct_usage.py
 python simple_langgraph.py
+python bedrock_test.py
 ```
 
 ## Testing
@@ -513,9 +559,9 @@ mypy langchain_utcp_adapters/
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - LangChain Core 0.3.36+
-- UTCP 0.1.7+
+- UTCP 0.1.8+
 - Pydantic 2.0+
 
 ## License
