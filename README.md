@@ -13,21 +13,98 @@ A Python package that bridges Universal Tool Calling Protocol (UTCP) providers w
 
 ## Installation
 
+### Using pip (Recommended for Users)
+
 ```bash
 pip install langchain-utcp-adapters
+```
+
+### Using PDM (Recommended for Development)
+
+```bash
+pdm install
 ```
 
 ### Optional Dependencies
 
 ```bash
-# For examples with OpenAI and LangGraph
+# Using pip
+pip install langchain-utcp-adapters[examples]  # LangGraph + OpenAI
+pip install langchain-utcp-adapters[bedrock]   # Amazon Bedrock
+pip install langchain-utcp-adapters[all]       # Everything
+
+# Using PDM
+pdm install -G examples  # LangGraph + OpenAI examples
+pdm install -G bedrock   # Amazon Bedrock integration
+pdm install -G server    # Server-based examples (FastAPI)
+pdm install -G test      # Testing dependencies
+pdm install -G dev       # Development tools
+pdm install -G all       # Everything for development
+```
+
+## Installation Scenarios
+
+### For End Users
+
+```bash
+# Basic usage
+pip install langchain-utcp-adapters
+
+# With LangGraph examples  
 pip install langchain-utcp-adapters[examples]
 
-# For Amazon Bedrock integration
+# With Bedrock support
 pip install langchain-utcp-adapters[bedrock]
 
-# Install everything
+# Everything
 pip install langchain-utcp-adapters[all]
+```
+
+### For Contributors/Developers
+
+```bash
+# Clone and setup with PDM (recommended)
+git clone https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters
+cd langchain-utcp-adapters
+pdm install -G all
+
+# Or with pip
+git clone https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters
+cd langchain-utcp-adapters
+pip install -e ".[all]"
+```
+
+### For Running Tests
+
+```bash
+# With PDM
+pdm install -G test
+pdm run pytest
+
+# With pip  
+pip install -e ".[test]"
+pytest
+```
+
+### For Running Examples
+
+```bash
+# Basic examples (no external APIs)
+python examples/basic_usage.py
+python examples/simple_direct_usage.py
+
+# LangGraph examples (requires OpenAI API key)
+pdm install -G examples  # or pip install langchain-utcp-adapters[examples]
+export OPENAI_API_KEY=your_key_here
+python examples/simple_langgraph.py
+
+# Bedrock examples (requires AWS credentials)
+pdm install -G bedrock   # or pip install langchain-utcp-adapters[bedrock]
+python examples/bedrock_test.py
+
+# Server examples (creates local test servers)
+pdm install -G server    # or pip install langchain-utcp-adapters[all]
+python examples/langgraph_integration.py
 ```
 
 ## Quick Start
@@ -247,19 +324,57 @@ The `examples/` directory contains comprehensive examples:
 
 ## Development
 
+### Setup
+
 ```bash
 # Clone the repository
 git clone https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters
 cd langchain-utcp-adapters
 
-# Install in development mode
-pip install -e ".[dev,test,examples]"
+# Using PDM (recommended)
+pdm install -G all
 
-# Run tests
+# Or using pip
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -e ".[all]"
+```
+
+### Running Tests
+
+```bash
+# With PDM
+pdm run pytest
+
+# With pip
 pytest
+```
 
-# Run examples
+### Running Examples
+
+```bash
+# Basic examples
 python examples/basic_usage.py
+
+# Examples requiring API keys
+export OPENAI_API_KEY=your_key_here
+python examples/simple_langgraph.py
+
+# Bedrock examples (requires AWS credentials)
+python examples/bedrock_test.py
+```
+
+### Code Quality
+
+```bash
+# Format code
+black langchain_utcp_adapters/ tests/ examples/
+
+# Sort imports
+isort langchain_utcp_adapters/ tests/ examples/
+
+# Type checking
+mypy langchain_utcp_adapters/
 ```
 
 ## Contributing
@@ -526,9 +641,27 @@ pytest tests/ --cov=langchain_utcp_adapters
 
 ```bash
 cd langchain-utcp-adapters
+
+# Using PDM (recommended)
+pdm install -G all
+
+# Or using pip
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[all]"
+```
+
+### Running Tests
+
+```bash
+# With PDM
+pdm run pytest
+
+# With pip
+pytest
+
+# Run with coverage
+pytest tests/ --cov=langchain_utcp_adapters
 ```
 
 ### Code Quality

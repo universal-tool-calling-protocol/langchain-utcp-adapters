@@ -31,5 +31,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Dependencies
 - LangChain Core 0.3.36+
-- UTCP 0.1.7+
-- Python 3.8+
+- UTCP 0.1.8+
+- Python 3.10+

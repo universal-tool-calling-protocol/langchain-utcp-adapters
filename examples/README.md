@@ -7,12 +7,25 @@ This directory contains comprehensive examples demonstrating how to use the Lang
 1. **Install the package**:
    ```bash
    pip install -e .
+1. **Install the base package**:
+   ```bash
+   pip install langchain-utcp-adapters
    ```
 
-2. **Install optional dependencies** (using PDM):
+2. **Install optional dependencies**:
+   
+   **Using PDM (for development)**:
    ```bash
    pdm install -G examples  # For LangGraph and OpenAI examples
    pdm install -G bedrock   # For Amazon Bedrock examples
+   pdm install -G server    # For server-based examples
+   ```
+   
+   **Using pip (for end users)**:
+   ```bash
+   pip install langchain-utcp-adapters[examples]  # LangGraph + OpenAI
+   pip install langchain-utcp-adapters[bedrock]   # Amazon Bedrock
+   pip install langchain-utcp-adapters[all]       # Everything
    ```
 
 3. **Run a basic example**:
@@ -233,7 +246,11 @@ export BASIC_AUTH_PASSWORD=your_password
 **Error**: `ModuleNotFoundError: No module named 'langgraph'`  
 **Solution**: Install optional dependencies:
 ```bash
+# Using PDM
 pdm install -G examples
+
+# Using pip
+pip install langchain-utcp-adapters[examples]
 ```
 
 #### 2. Missing API Keys
