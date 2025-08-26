@@ -10,7 +10,7 @@
         {
             "name": "newsapi",
             "call_template_type": "text",
-            "file_path": "../examples/newsapi_manual.json"
+            "file_path": "./examples/newsapi_manual.json"
         }
     ]
 }
