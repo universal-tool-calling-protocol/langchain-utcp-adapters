@@ -6,8 +6,8 @@ that real tools are loaded and working correctly.
 """
 
 import asyncio
-from utcp.client.utcp_client import UtcpClient
-from utcp.client.utcp_client_config import UtcpClientConfig
+from utcp.utcp_client import UtcpClient
+from utcp.data.utcp_client_config import UtcpClientConfig
 from langchain_utcp_adapters import load_utcp_tools, search_utcp_tools
 
 

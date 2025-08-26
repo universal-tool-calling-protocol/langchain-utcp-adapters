@@ -11,7 +11,7 @@ from langchain_utcp_adapters.tools import (
     _create_pydantic_model_from_schema,
     _json_schema_to_python_type,
 )
-from utcp.data.tool import Tool as UTCPTool, ToolInputOutputSchema
+from utcp.data.tool import Tool as UTCPTool
 from utcp_http.http_call_template import HttpCallTemplate
 
 
@@ -74,8 +74,9 @@ class TestToolConversion:
         mock_client.call_tool.return_value = {"result": "success"}
         
         # Create UTCP tool
-        provider = HttpProvider(
+        provider = HttpCallTemplate(
             name="test_provider",
+            call_template_type="http",
             url="http://example.com/api",
             http_method="POST"
         )
@@ -126,12 +127,15 @@ class TestToolConversion:
         
         # Create mock tool repository
         mock_tool_repo = AsyncMock()
-        provider = HttpProvider(name="test_provider", url="http://example.com")
+        provider = HttpCallTemplate(name="test_provider", call_template_type="http", url="http://example.com")
         
         utcp_tool = UTCPTool(
             name="test_tool",
             description="A test tool",
-            inputs=ToolInputOutputSchema(),
+            inputs={"type": "object", "properties": {}},
+            outputs={"type": "object", "properties": {}},
+            tags=[],
+            tool_call_template=provider
             outputs=ToolInputOutputSchema(),
             tool_provider=provider
         )
