@@ -6,9 +6,9 @@ through LangGraph agents using the current UTCP client API.
 
 import asyncio
 import os
-from utcp.client.utcp_client import UtcpClient
-from utcp.client.utcp_client_config import UtcpClientConfig
-from utcp.shared.provider import HttpProvider
+from utcp.utcp_client import UtcpClient
+from utcp.data.utcp_client_config import UtcpClientConfig
+from utcp_http.http_call_template import HttpCallTemplate
 from langchain_utcp_adapters import load_utcp_tools, search_utcp_tools, create_bedrock_tool_mapping
 
 # Optional: Only import if available

@@ -11,8 +11,8 @@ from langchain_utcp_adapters.tools import (
     _create_pydantic_model_from_schema,
     _json_schema_to_python_type,
 )
-from utcp.shared.tool import Tool as UTCPTool, ToolInputOutputSchema
-from utcp.shared.provider import HttpProvider
+from utcp.data.tool import Tool as UTCPTool, ToolInputOutputSchema
+from utcp_http.http_call_template import HttpCallTemplate
 
 
 class TestToolConversion:

@@ -11,10 +11,12 @@ valid credentials.
 import asyncio
 from pathlib import Path
 
-from utcp.client.utcp_client import UtcpClient
-from utcp.client.utcp_client_config import UtcpClientConfig
-from utcp.shared.provider import HttpProvider
-from utcp.shared.auth import ApiKeyAuth, BasicAuth, OAuth2Auth
+from utcp.utcp_client import UtcpClient
+from utcp.data.utcp_client_config import UtcpClientConfig
+from utcp_http.http_call_template import HttpCallTemplate
+from utcp.data.auth_implementations.api_key_auth import ApiKeyAuth
+from utcp.data.auth_implementations.basic_auth import BasicAuth
+from utcp.data.auth_implementations.oauth2_auth import OAuth2Auth
 from langchain_utcp_adapters import load_utcp_tools
 
 

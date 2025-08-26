@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 
 from langchain_core.tools import BaseTool, StructuredTool, ToolException
 from pydantic import BaseModel, create_model
-from utcp.client.utcp_client import UtcpClient
-from utcp.shared.tool import Tool as UTCPTool
+from utcp.utcp_client import UtcpClient
+from utcp.data.tool import Tool as UTCPTool
 
 
 def _convert_utcp_result(result: Any) -> str:
@@ -47,12 +47,13 @@ def _create_pydantic_model_from_schema(
     Returns:
         A Pydantic BaseModel class
     """
-    if schema.get("type") != "object":
-        # If not an object schema, create a simple model with a single field
-        return create_model(model_name, value=(Any, ...))
-    
+    # Handle the case where schema has properties directly (UTCP 1.0.0+ format)
     properties = schema.get("properties", {})
-    required = schema.get("required") or []
+    required = schema.get("required", [])
+    
+    # If no properties but has type, create a simple model
+    if not properties and schema.get("type") != "object":
+        return create_model(model_name, value=(Any, ...))
     
     field_definitions = {}
     
@@ -79,6 +80,10 @@ def _json_schema_to_python_type(schema: Dict[str, Any]) -> type:
     """
     schema_type = schema.get("type", "string")
     
+    # Handle None type (default to string)
+    if schema_type is None:
+        schema_type = "string"
+    
     type_mapping = {
         "string": str,
         "integer": int,
@@ -88,7 +93,7 @@ def _json_schema_to_python_type(schema: Dict[str, Any]) -> type:
         "object": Dict[str, Any],
     }
     
-    return type_mapping.get(schema_type, Any)
+    return type_mapping.get(schema_type, str)  # Default to str instead of Any
 
 
 def convert_utcp_tool_to_langchain_tool(
@@ -121,8 +126,9 @@ def convert_utcp_tool_to_langchain_tool(
         f"{tool.name.replace('.', '_')}Input"
     )
 
-    # Extract provider name from the tool name (format: provider.tool_name)
-    provider_name = tool.tool_provider.name
+    # Extract call template name from the tool call template
+    call_template_name = tool.tool_call_template.name if hasattr(tool.tool_call_template, 'name') else "unknown"
+    call_template_type = tool.tool_call_template.call_template_type if hasattr(tool.tool_call_template, 'call_template_type') else "unknown"
     
     return StructuredTool(
         name=tool.name,  # Use the full namespaced name from UTCP
@@ -130,8 +136,8 @@ def convert_utcp_tool_to_langchain_tool(
         args_schema=args_schema,
         coroutine=call_tool,
         metadata={
-            "provider": provider_name,
-            "provider_type": tool.tool_provider.provider_type,
+            "call_template": call_template_name,
+            "call_template_type": call_template_type,
             "tags": tool.tags,
             "utcp_tool": True,
         },
@@ -140,25 +146,25 @@ def convert_utcp_tool_to_langchain_tool(
 
 async def load_utcp_tools(
     utcp_client: UtcpClient,
-    provider_name: Optional[str] = None,
+    call_template_name: Optional[str] = None,
 ) -> List[BaseTool]:
     """Load all available UTCP tools and convert them to LangChain tools.
 
     Args:
         utcp_client: The UTCP client instance
-        provider_name: Optional provider name to filter tools
+        call_template_name: Optional call template name to filter tools
 
     Returns:
         List of LangChain tools
     """
-    # Get all tools from the UTCP client
-    all_tools = await utcp_client.tool_repository.get_tools()
+    # Get all tools from the UTCP client using search with empty string and high limit
+    all_tools = await utcp_client.search_tools("", limit=1000)  # Use high limit to get all tools
     
-    # Filter by provider if specified
-    if provider_name:
+    # Filter by call template if specified
+    if call_template_name:
         all_tools = [
             tool for tool in all_tools 
-            if tool.tool_provider.name == provider_name
+            if hasattr(tool.tool_call_template, 'name') and tool.tool_call_template.name == call_template_name
         ]
     
     # Convert each UTCP tool to a LangChain tool
@@ -177,7 +183,7 @@ async def load_utcp_tools(
 async def search_utcp_tools(
     utcp_client: UtcpClient,
     query: str,
-    provider_name: Optional[str] = None,
+    call_template_name: Optional[str] = None,
     max_results: Optional[int] = None,
 ) -> List[BaseTool]:
     """Search for UTCP tools and convert them to LangChain tools.
@@ -185,7 +191,7 @@ async def search_utcp_tools(
     Args:
         utcp_client: The UTCP client instance
         query: Search query string
-        provider_name: Optional provider name to filter tools
+        call_template_name: Optional call template name to filter tools
         max_results: Maximum number of results to return
 
     Returns:
@@ -193,11 +199,13 @@ async def search_utcp_tools(
     """
     # Use UTCP's built-in search functionality
     try:
-        search_results = await utcp_client.search_tools(query)
+        # Use max_results if provided, otherwise use a high limit to get all matching tools
+        limit = max_results if max_results is not None else 1000
+        search_results = await utcp_client.search_tools(query, limit=limit)
     except Exception as e:
         print(f"Warning: UTCP search failed ({e}), falling back to manual search")
-        # Fallback: implement basic search ourselves
-        all_tools = await utcp_client.tool_repository.get_tools()
+        # Fallback: get all tools and search manually
+        all_tools = await utcp_client.search_tools("", limit=1000)
         query_lower = query.lower()
         
         search_results = []
@@ -207,17 +215,17 @@ async def search_utcp_tools(
                 query_lower in tool.description.lower() or
                 any(query_lower in tag.lower() for tag in tool.tags)):
                 search_results.append(tool)
+        
+        # Apply max_results limit if specified
+        if max_results:
+            search_results = search_results[:max_results]
     
-    # Filter by provider if specified
-    if provider_name:
+    # Filter by call template if specified
+    if call_template_name:
         search_results = [
             tool for tool in search_results 
-            if tool.tool_provider.name == provider_name
+            if hasattr(tool.tool_call_template, 'name') and tool.tool_call_template.name == call_template_name
         ]
-    
-    # Limit results if specified
-    if max_results:
-        search_results = search_results[:max_results]
     
     # Convert each UTCP tool to a LangChain tool
     langchain_tools = []

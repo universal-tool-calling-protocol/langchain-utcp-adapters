@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Real providers example for LangChain UTCP Adapters.
 
-This example demonstrates the package working with actual UTCP providers:
+This example demonstrates the package working with actual UTCP call templates:
 - OpenLibrary API (via OpenAPI specification)
 - NewsAPI (via UTCP manual definition)
 
@@ -12,149 +12,103 @@ import asyncio
 import json
 from pathlib import Path
 
-from utcp.client.utcp_client import UtcpClient
-from utcp.client.utcp_client_config import UtcpClientConfig
-from utcp.shared.provider import HttpProvider, TextProvider
+from utcp.utcp_client import UtcpClient
+from utcp.data.utcp_client_config import UtcpClientConfig
+from utcp_http.http_call_template import HttpCallTemplate
+from utcp_text.text_call_template import TextCallTemplate
 from langchain_utcp_adapters import load_utcp_tools, search_utcp_tools
 
 
 async def main():
-    """Main example function demonstrating real UTCP providers."""
-    print("🌟 LangChain UTCP Adapters - Real Providers Example")
+    """Main example function demonstrating real UTCP call templates."""
+    print("🌟 LangChain UTCP Adapters - Real Call Templates Example")
     print("=" * 60)
     
-    # Create UTCP client
+    # Create UTCP client with call templates
     print("📡 Creating UTCP client...")
-    config = UtcpClientConfig()
-    client = await UtcpClient.create(config=config)
     
-    # Register providers programmatically
-    print("📡 Registering real providers...")
-    
-    # Register OpenLibrary via OpenAPI
-    try:
-        print("  Registering OpenLibrary API...")
-        openlibrary_provider = HttpProvider(
+    # Check if NewsAPI manual exists
+    newsapi_file = Path("newsapi_manual.json")
+    call_templates = [
+        HttpCallTemplate(
             name="openlibrary",
-            provider_type="http",
+            call_template_type="http",
             http_method="GET",
             url="https://openlibrary.org/static/openapi.json",
             content_type="application/json"
         )
-        openlibrary_tools = await client.register_tool_provider(openlibrary_provider)
-        print(f"    ✅ Registered {len(openlibrary_tools)} OpenLibrary tools")
-    except Exception as e:
-        print(f"    ❌ Failed to register OpenLibrary: {e}")
-    
-    # Register NewsAPI via text file (if available)
-    newsapi_file = Path("newsapi_manual.json")
-    if newsapi_file.exists():
-        try:
-            print("  Registering NewsAPI from manual...")
-            newsapi_provider = TextProvider(
-                name="newsapi",
-                provider_type="text",
-                file_path="./newsapi_manual.json"
-            )
-            newsapi_tools = await client.register_tool_provider(newsapi_provider)
-            print(f"    ✅ Registered {len(newsapi_tools)} NewsAPI tools")
-        except Exception as e:
-            print(f"    ❌ Failed to register NewsAPI: {e}")
-    else:
-        print("  ⚠️  NewsAPI manual not found, skipping")
-    
-    # Alternative: Setup providers via configuration file
-    print("\n📄 Alternative: Using providers.json configuration...")
-    providers_config = [
-        {
-            "name": "httpbin_demo",
-            "provider_type": "http",
-            "http_method": "POST",
-            "url": "http://httpbin.org/anything",
-            "content_type": "application/json"
-        }
     ]
     
-    providers_file = Path("real_providers.json")
-    with open(providers_file, "w") as f:
-        json.dump(providers_config, f, indent=2)
+    if newsapi_file.exists():
+        call_templates.append(
+            TextCallTemplate(
+                name="newsapi",
+                call_template_type="text",
+                file_path="./newsapi_manual.json"
+            )
+        )
+        print("  📄 Found NewsAPI manual, including in configuration")
+    else:
+        print("  ⚠️  NewsAPI manual not found, using OpenLibrary only")
     
+    config = UtcpClientConfig(manual_call_templates=call_templates)
+    client = await UtcpClient.create(config=config)
+    
+    # Load all available tools
+    print("\n🔧 Loading UTCP tools...")
     try:
-        additional_providers = await client.load_providers("real_providers.json")
-        print(f"✅ Loaded {len(additional_providers)} additional providers from file")
+        langchain_tools = await load_utcp_tools(client)
+        print(f"✅ Successfully loaded {len(langchain_tools)} tools")
+        
+        # Display available tools
+        print("\n📋 Available tools:")
+        for tool in langchain_tools:
+            print(f"  • {tool.name}: {tool.description}")
+    
     except Exception as e:
-        print(f"❌ Failed to load providers from file: {e}")
+        print(f"❌ Failed to load tools: {e}")
+        return
     
-    # Load all tools and convert to LangChain format
-    print("\n🔧 Loading all tools...")
-    tools = await load_utcp_tools(client)
-    print(f"Found {len(tools)} LangChain tools from real providers:")
-    
-    # Group tools by provider
-    tools_by_provider = {}
-    for tool in tools:
-        provider = tool.metadata.get('provider', 'unknown')
-        if provider not in tools_by_provider:
-            tools_by_provider[provider] = []
-        tools_by_provider[provider].append(tool)
-    
-    for provider, provider_tools in tools_by_provider.items():
-        print(f"\n  📦 {provider} ({len(provider_tools)} tools):")
-        for tool in provider_tools[:3]:  # Show first 3 tools
-            print(f"    - {tool.name}")
-            print(f"      Description: {tool.description}")
-        if len(provider_tools) > 3:
-            print(f"    ... and {len(provider_tools) - 3} more tools")
-    
-    # Demonstrate search functionality
-    print("\n🔍 Searching for specific functionality...")
-    search_queries = ["book", "search", "author", "news", "article"]
+    # Demonstrate tool search
+    print("\n🔍 Searching for specific tools...")
+    search_queries = ["search", "book", "author", "news"]
     
     for query in search_queries:
-        results = await search_utcp_tools(client, query, max_results=3)
-        if results:
-            print(f"\n  Query '{query}' found {len(results)} tools:")
-            for tool in results:
-                provider = tool.metadata.get('provider', 'unknown')
-                print(f"    - {tool.name} ({provider})")
-                print(f"      {tool.description}")
+        try:
+            matching_tools = await search_utcp_tools(client, query, max_results=3)
+            if matching_tools:
+                print(f"\n  Query: '{query}' -> {len(matching_tools)} matches:")
+                for tool in matching_tools:
+                    print(f"    • {tool.name}")
+            else:
+                print(f"\n  Query: '{query}' -> No matches")
+        except Exception as e:
+            print(f"  ❌ Search failed for '{query}': {e}")
     
-    # Show detailed information for one tool
-    if tools:
-        example_tool = tools[0]
-        print(f"\n📋 Detailed example: '{example_tool.name}'")
-        print(f"  Provider: {example_tool.metadata.get('provider')}")
-        print(f"  Provider Type: {example_tool.metadata.get('provider_type')}")
-        print(f"  Description: {example_tool.description}")
-        print(f"  Tags: {example_tool.metadata.get('tags', [])}")
-        print(f"  Args Schema: {example_tool.args_schema}")
+    # Demonstrate tool execution (if tools are available)
+    if langchain_tools:
+        print(f"\n🚀 Testing tool execution...")
         
-        # Show how to call the tool (without actually calling it)
-        print(f"\n  Example usage:")
-        print(f"    result = await {example_tool.name}(**arguments)")
-        print(f"    # Where arguments match the schema: {example_tool.args_schema}")
+        # Try to find a simple tool to test
+        test_tool = None
+        for tool in langchain_tools:
+            if "search" in tool.name.lower() and "author" in tool.name.lower():
+                test_tool = tool
+                break
+        
+        if test_tool:
+            try:
+                print(f"  Testing tool: {test_tool.name}")
+                # Use a simple test query
+                result = await test_tool.ainvoke({"q": "J.K. Rowling"})
+                print(f"  ✅ Tool execution successful")
+                print(f"  📄 Result preview: {str(result)[:200]}...")
+            except Exception as e:
+                print(f"  ❌ Tool execution failed: {e}")
+        else:
+            print("  ⚠️  No suitable test tool found")
     
-    # Demonstrate provider-specific tool loading
-    print("\n🎯 Loading tools from specific provider...")
-    if 'Open Library API' in [tool.metadata.get('provider') for tool in tools]:
-        openlibrary_tools = await load_utcp_tools(client, provider_name="Open Library API")
-        print(f"Found {len(openlibrary_tools)} tools specifically from OpenLibrary:")
-        for tool in openlibrary_tools[:3]:
-            print(f"  - {tool.name}")
-    
-    # Performance and statistics
-    print(f"\n📊 Summary Statistics:")
-    print(f"  Total tools loaded: {len(tools)}")
-    print(f"  Total providers: {len(tools_by_provider)}")
-    print(f"  Average tools per provider: {len(tools) / len(tools_by_provider) if tools_by_provider else 0:.1f}")
-    
-    # Cleanup
-    if providers_file.exists():
-        providers_file.unlink()
-    
-    print("\n✅ Real providers example completed successfully!")
-    print("This demonstrates how UTCP can integrate with real-world APIs")
-    print("and make them available as LangChain tools with minimal configuration.")
+    print(f"\n✨ Example completed!")
 
 
 if __name__ == "__main__":
