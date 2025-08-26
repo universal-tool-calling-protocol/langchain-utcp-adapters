@@ -125,8 +125,7 @@ class TestToolConversion:
         # Create mock UTCP client
         mock_client = AsyncMock()
         
-        # Create mock tool repository
-        mock_tool_repo = AsyncMock()
+        # Create mock call template
         provider = HttpCallTemplate(name="test_provider", call_template_type="http", url="http://example.com")
         
         utcp_tool = UTCPTool(
@@ -138,26 +137,27 @@ class TestToolConversion:
             tool_call_template=provider
         )
         
-        mock_tool_repo.get_tools.return_value = [utcp_tool]
-        mock_client.tool_repository = mock_tool_repo
+        # Mock the search_tools method that load_utcp_tools actually uses
+        mock_client.search_tools.return_value = [utcp_tool]
         
         # Load tools
         langchain_tools = await load_utcp_tools(mock_client)
         
         # Verify results
         assert len(langchain_tools) == 1
-        assert langchain_tools[0].name == "test_tool"  # UTCP provides the name as-is
+        assert langchain_tools[0].name == "test_tool"
         assert langchain_tools[0].metadata["utcp_tool"] is True
+        
+        # Verify search_tools was called with empty string and high limit
+        mock_client.search_tools.assert_called_once_with("", limit=1000)
 
     @pytest.mark.asyncio
     async def test_load_utcp_tools_with_provider_filter(self):
-        """Test loading UTCP tools with provider filter."""
+        """Test loading UTCP tools with call template filter."""
         # Create mock UTCP client
         mock_client = AsyncMock()
         
-        # Create mock tool repository
-        mock_tool_repo = AsyncMock()
-        
+        # Create mock call templates
         provider1 = HttpCallTemplate(name="provider1", call_template_type="http", url="http://example1.com")
         provider2 = HttpCallTemplate(name="provider2", call_template_type="http", url="http://example2.com")
         
@@ -179,15 +179,15 @@ class TestToolConversion:
             tool_call_template=provider2
         )
         
-        mock_tool_repo.get_tools.return_value = [tool1, tool2]
-        mock_client.tool_repository = mock_tool_repo
+        # Mock search_tools to return both tools
+        mock_client.search_tools.return_value = [tool1, tool2]
         
-        # Load tools with provider filter
-        langchain_tools = await load_utcp_tools(mock_client, provider_name="provider1")
+        # Load tools with call template filter
+        langchain_tools = await load_utcp_tools(mock_client, call_template_name="provider1")
         
         # Verify only provider1 tools are returned
         assert len(langchain_tools) == 1
-        assert langchain_tools[0].name == "tool1"  # UTCP provides the name as-is
+        assert langchain_tools[0].name == "tool1"
 
     @pytest.mark.asyncio
     async def test_search_utcp_tools(self):
@@ -212,5 +212,5 @@ class TestToolConversion:
         
         # Verify results
         assert len(langchain_tools) == 1
-        assert langchain_tools[0].name == "search_tool"  # UTCP provides the name as-is
-        mock_client.search_tools.assert_called_once_with("search query")
+        assert langchain_tools[0].name == "search_tool"
+        mock_client.search_tools.assert_called_once_with("search query", limit=1000)
