@@ -84,21 +84,21 @@ class TestToolConversion:
         utcp_tool = UTCPTool(
             name="test_tool",
             description="A test tool",
-            inputs=ToolInputOutputSchema(
-                type="object",
-                properties={
+            inputs={
+                "type": "object",
+                "properties": {
                     "input_text": {"type": "string"}
                 },
-                required=["input_text"]
-            ),
-            outputs=ToolInputOutputSchema(
-                type="object",
-                properties={
+                "required": ["input_text"]
+            },
+            outputs={
+                "type": "object",
+                "properties": {
                     "output_text": {"type": "string"}
                 }
-            ),
+            },
             tags=["test"],
-            tool_provider=provider
+            tool_call_template=provider
         )
         
         # Convert to LangChain tool
@@ -107,8 +107,8 @@ class TestToolConversion:
         # Test tool properties
         assert langchain_tool.name == "test_tool"  # UTCP provides the name as-is
         assert langchain_tool.description == "A test tool"
-        assert langchain_tool.metadata["provider"] == "test_provider"
-        assert langchain_tool.metadata["provider_type"] == "http"
+        assert langchain_tool.metadata["call_template"] == "test_provider"
+        assert langchain_tool.metadata["call_template_type"] == "http"
         assert langchain_tool.metadata["utcp_tool"] is True
         
         # Test tool execution
@@ -136,8 +136,6 @@ class TestToolConversion:
             outputs={"type": "object", "properties": {}},
             tags=[],
             tool_call_template=provider
-            outputs=ToolInputOutputSchema(),
-            tool_provider=provider
         )
         
         mock_tool_repo.get_tools.return_value = [utcp_tool]
@@ -160,23 +158,25 @@ class TestToolConversion:
         # Create mock tool repository
         mock_tool_repo = AsyncMock()
         
-        provider1 = HttpProvider(name="provider1", url="http://example1.com")
-        provider2 = HttpProvider(name="provider2", url="http://example2.com")
+        provider1 = HttpCallTemplate(name="provider1", call_template_type="http", url="http://example1.com")
+        provider2 = HttpCallTemplate(name="provider2", call_template_type="http", url="http://example2.com")
         
         tool1 = UTCPTool(
             name="tool1",
             description="Tool 1",
-            inputs=ToolInputOutputSchema(),
-            outputs=ToolInputOutputSchema(),
-            tool_provider=provider1
+            inputs={"type": "object", "properties": {}},
+            outputs={"type": "object", "properties": {}},
+            tags=[],
+            tool_call_template=provider1
         )
         
         tool2 = UTCPTool(
             name="tool2", 
             description="Tool 2",
-            inputs=ToolInputOutputSchema(),
-            outputs=ToolInputOutputSchema(),
-            tool_provider=provider2
+            inputs={"type": "object", "properties": {}},
+            outputs={"type": "object", "properties": {}},
+            tags=[],
+            tool_call_template=provider2
         )
         
         mock_tool_repo.get_tools.return_value = [tool1, tool2]
@@ -195,13 +195,14 @@ class TestToolConversion:
         # Create mock UTCP client
         mock_client = AsyncMock()
         
-        provider = HttpProvider(name="test_provider", url="http://example.com")
+        provider = HttpCallTemplate(name="test_provider", call_template_type="http", url="http://example.com")
         utcp_tool = UTCPTool(
             name="search_tool",
             description="A searchable tool",
-            inputs=ToolInputOutputSchema(),
-            outputs=ToolInputOutputSchema(),
-            tool_provider=provider
+            inputs={"type": "object", "properties": {}},
+            outputs={"type": "object", "properties": {}},
+            tags=[],
+            tool_call_template=provider
         )
         
         mock_client.search_tools.return_value = [utcp_tool]
