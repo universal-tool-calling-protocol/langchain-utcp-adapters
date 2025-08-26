@@ -277,22 +277,22 @@ from langchain_utcp_adapters import (
 )
 ```
 
-#### `load_utcp_tools(utcp_client, provider_name=None)`
+#### `load_utcp_tools(utcp_client, call_template_name=None)`
 Load all tools from UTCP client and convert to LangChain format.
 
 **Parameters:**
 - `utcp_client`: UTCP client instance
-- `provider_name`: Optional provider name to filter tools
+- `call_template_name`: Optional call template name to filter tools
 
 **Returns:** List of LangChain BaseTool instances
 
-#### `search_utcp_tools(utcp_client, query, provider_name=None, max_results=None)`
+#### `search_utcp_tools(utcp_client, query, call_template_name=None, max_results=None)`
 Search for tools and convert to LangChain format.
 
 **Parameters:**
 - `utcp_client`: UTCP client instance  
 - `query`: Search query string
-- `provider_name`: Optional provider name to filter
+- `call_template_name`: Optional call template name to filter
 - `max_results`: Maximum number of results
 
 **Returns:** List of relevant LangChain BaseTool instances
