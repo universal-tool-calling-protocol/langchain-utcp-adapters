@@ -76,26 +76,22 @@ async def main():
     
     # Create UTCP client directly
     print("\n📡 Creating UTCP client...")
-    config = UtcpClientConfig()
+    # Create UTCP client with call templates
+    print("📡 Creating UTCP client...")
+    config = UtcpClientConfig(
+        manual_call_templates=[
+            HttpCallTemplate(
+                name="openlibrary",
+                call_template_type="http",
+                url="https://openlibrary.org/static/openapi.json",
+                http_method="GET",
+                content_type="application/json"
+            )
+        ]
+    )
     client = await UtcpClient.create(config=config)
     
-    # Register providers using Provider objects
-    print("📡 Registering providers...")
-    
-    # Register OpenLibrary provider for demonstration
-    openlibrary_provider = HttpProvider(
-        name="openlibrary",
-        provider_type="http",
-        http_method="GET",
-        url="https://openlibrary.org/static/openapi.json",
-        content_type="application/json"
-    )
-    await client.register_tool_provider(openlibrary_provider)
-    
-    # Note: Only registering real APIs with proper OpenAPI specs
-    # HTTPBin doesn't provide OpenAPI spec, so we skip it
-    
-    print("✅ Providers registered successfully")
+    print("✅ Successfully created UTCP client with call templates")
     
     try:
         # Load tools
