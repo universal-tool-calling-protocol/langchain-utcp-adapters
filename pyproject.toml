@@ -21,6 +21,12 @@ dependencies = [
     "aiohttp>=3.8",
 ]
 
+[project.urls]
+Homepage = "https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters"
+Documentation = "https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters#readme"
+Repository = "https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters"
+Issues = "https://github.com/universal-tool-calling-protocol/langchain-utcp-adapters/issues"
+
 [dependency-groups]
 # Core testing dependencies
 test = [
