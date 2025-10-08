@@ -1,5 +1,9 @@
 # LangChain UTCP Adapters
 
+[![PyPI version](https://badge.fury.io/py/langchain-utcp-adapters.svg)](https://badge.fury.io/py/langchain-utcp-adapters)
+[![Python Support](https://img.shields.io/pypi/pyversions/langchain-utcp-adapters.svg)](https://pypi.org/project/langchain-utcp-adapters/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A Python package that bridges Universal Tool Calling Protocol (UTCP) with LangChain, enabling seamless integration of external tools and APIs into LangChain applications.
 
 ## Features
